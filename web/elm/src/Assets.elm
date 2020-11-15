@@ -157,7 +157,7 @@ toPath asset =
                             [ "favicon-" ++ imageName ++ ".png" ]
 
                         Nothing ->
-                            [ "favicon.png" ]
+                            [ "brand-logo.png" ]
                    )
 
         PinIconWhite ->
@@ -194,7 +194,7 @@ toPath asset =
             basePath ++ [ "passport-officer-ic.svg" ]
 
         ConcourseLogoWhite ->
-            basePath ++ [ "concourse-logo-white.svg" ]
+            basePath ++ [ "brand-logo.png" ]
 
         CircleOutlineIcon icon ->
             let

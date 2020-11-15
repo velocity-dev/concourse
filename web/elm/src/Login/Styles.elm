@@ -4,6 +4,7 @@ module Login.Styles exposing
     , loginItem
     , loginText
     , logoutButton
+    , orgDetailsContainer
     )
 
 import Colors
@@ -23,17 +24,16 @@ loginContainer =
     [ style "position" "relative"
     , style "display" "flex"
     , style "flex-direction" "column"
+    , style "height" "100%"
     , style "border-left" <|
         "1px solid "
             ++ Colors.background
-    , style "line-height" "54px"
     ]
 
 
 loginItem : List (Html.Attribute msg)
 loginItem =
     [ style "padding" "0 30px"
-    , style "cursor" "pointer"
     , style "display" "flex"
     , style "align-items" "center"
     , style "justify-content" "center"
@@ -61,4 +61,17 @@ logoutButton =
     , style "align-items" "center"
     , style "justify-content" "center"
     , style "flex-grow" "1"
+    ]
+
+
+orgDetailsContainer : List (Html.Attribute msg)
+orgDetailsContainer =
+    [ style "position" "absolute"
+    , style "top" "55px"
+    , style "right" "0"
+    , style "padding" "10px 10px 20px 10px"
+    , style "background-color" Colors.frame
+    , style "height" "54px"
+    , style "width" "350px"
+    , style "border-top" <| "1px solid " ++ Colors.background
     ]

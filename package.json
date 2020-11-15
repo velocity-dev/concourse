@@ -24,7 +24,8 @@
     "puppeteer": "^1.20.0",
     "uglify-js": "^3.6.3",
     "webpack": "^4.41.6",
-    "webpack-cli": "^3.3.11"
+    "webpack-cli": "^3.3.11",
+    "chokidar-cli": "^1.2.1"
   },
   "resolutions": {
     "less/request": "^2.86.0"
@@ -40,6 +41,7 @@
     "build-elm": "cd web/elm && elm make --optimize --output ../public/elm.js src/Main.elm && uglifyjs ../public/elm.js --compress \"pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe\" | uglifyjs --mangle --output ../public/elm.min.js",
     "build-elm-debug": "cd web/elm && elm make --debug --output ../public/elm.js src/Main.elm && uglifyjs < ../public/elm.js > ../public/elm.min.js",
     "update-mdi-svg": "./hack/update-mdi-svg \"node_modules/@mdi/svg/svg\" | tr -d '\n' > web/public/mdi-svg.min.js",
-    "benchmark": "cd web/elm && elm make --optimize --output /tmp/benchmark.html benchmarks/Benchmarks.elm && node benchmarks/benchmark.js /tmp/benchmark.html"
+    "benchmark": "cd web/elm && elm make --optimize --output /tmp/benchmark.html benchmarks/Benchmarks.elm && node benchmarks/benchmark.js /tmp/benchmark.html",
+    "watch-elm": "chokidar -i elm-stuff 'web/elm/src/**/*.elm' 'web/assets/css/*.less' -c 'yarn run build-debug' --initial"
   }
 }

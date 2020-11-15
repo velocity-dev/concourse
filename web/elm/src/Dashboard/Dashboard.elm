@@ -906,7 +906,7 @@ clusterNameView : Session -> Html Message
 clusterNameView session =
     Html.div
         Styles.clusterName
-        [ Html.text session.clusterName ]
+        [ Html.text ("Velocity.Dev")]
 
 
 showArchivedToggleView :
