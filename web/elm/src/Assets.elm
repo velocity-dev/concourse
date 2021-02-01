@@ -3,6 +3,7 @@ module Assets exposing
     , CircleOutlineIcon(..)
     , ComponentType(..)
     , backgroundImage
+    , pipelineStatusIcon
     , toString
     )
 
@@ -18,7 +19,7 @@ type Asset
     | ChevronRight
     | ToggleSwitch Bool
     | VisibilityToggleIcon Bool
-    | FavoritedToggleIcon Bool
+    | FavoritedToggleIcon { isFavorited : Bool, isHovered : Bool, isSideBar : Bool }
     | BuildFavicon (Maybe BuildStatus)
     | PinIconWhite
     | PinIconGrey
@@ -38,7 +39,12 @@ type Asset
     | SuccessCheckIcon
     | FailureTimesIcon
     | ExclamationTriangleIcon
-    | PipelineStatusIcon PipelineStatus
+    | PipelineStatusIconPaused
+    | PipelineStatusIconPending
+    | PipelineStatusIconSucceeded
+    | PipelineStatusIconFailed
+    | PipelineStatusIconAborted
+    | PipelineStatusIconErrored
     | PipelineStatusIconStale
     | PipelineStatusIconJobsDisabled
     | ClippyIcon
@@ -48,12 +54,16 @@ type Asset
     | MessageIcon
     | HamburgerMenuIcon
     | PeopleIcon
+    | PipelineIconGrey
+    | PipelineIconLightGrey
+    | PipelineIconWhite
     | PlusIcon
     | MinusIcon
     | PlayIcon
     | PauseIcon
     | PencilIcon
-    | SearchIcon
+    | SearchIconWhite
+    | SearchIconGrey
     | CloseIcon
 
 
@@ -135,11 +145,17 @@ toPath asset =
             in
             basePath ++ [ "baseline-visibility" ++ imageName ++ ".svg" ]
 
-        FavoritedToggleIcon isFavorited ->
+        FavoritedToggleIcon { isFavorited, isHovered, isSideBar } ->
             let
                 imageName =
                     if isFavorited then
                         "-filled"
+
+                    else if isHovered then
+                        "-unfilled-white"
+
+                    else if isSideBar then
+                        "-unfilled-bright"
 
                     else
                         "-unfilled"
@@ -177,7 +193,7 @@ toPath asset =
                 imageName =
                     case component of
                         PipelineComponent ->
-                            "pipeline"
+                            "pipeline-white"
 
                         JobComponent ->
                             "job"
@@ -244,29 +260,23 @@ toPath asset =
         ExclamationTriangleIcon ->
             basePath ++ [ "ic-exclamation-triangle.svg" ]
 
-        PipelineStatusIcon status ->
-            let
-                imageName =
-                    case status of
-                        PipelineStatusPaused ->
-                            "ic-pause-blue.svg"
+        PipelineStatusIconPaused ->
+            basePath ++ [ "ic-pause-blue.svg" ]
 
-                        PipelineStatusPending _ ->
-                            "ic-pending-grey.svg"
+        PipelineStatusIconPending ->
+            basePath ++ [ "ic-pending-grey.svg" ]
 
-                        PipelineStatusSucceeded _ ->
-                            "ic-running-green.svg"
+        PipelineStatusIconSucceeded ->
+            basePath ++ [ "ic-running-green.svg" ]
 
-                        PipelineStatusFailed _ ->
-                            "ic-failing-red.svg"
+        PipelineStatusIconFailed ->
+            basePath ++ [ "ic-failing-red.svg" ]
 
-                        PipelineStatusAborted _ ->
-                            "ic-aborted-brown.svg"
+        PipelineStatusIconAborted ->
+            basePath ++ [ "ic-aborted-brown.svg" ]
 
-                        PipelineStatusErrored _ ->
-                            "ic-error-orange.svg"
-            in
-            basePath ++ [ imageName ]
+        PipelineStatusIconErrored ->
+            basePath ++ [ "ic-error-orange.svg" ]
 
         PipelineStatusIconStale ->
             basePath ++ [ "ic-cached-grey.svg" ]
@@ -295,6 +305,15 @@ toPath asset =
         PeopleIcon ->
             basePath ++ [ "baseline-people.svg" ]
 
+        PipelineIconGrey ->
+            basePath ++ [ "ic-breadcrumb-pipeline-grey.svg" ]
+
+        PipelineIconLightGrey ->
+            basePath ++ [ "ic-breadcrumb-pipeline-lightgrey.svg" ]
+
+        PipelineIconWhite ->
+            basePath ++ [ "ic-breadcrumb-pipeline-white.svg" ]
+
         PlusIcon ->
             basePath ++ [ "ic-plus.svg" ]
 
@@ -307,8 +326,36 @@ toPath asset =
         PauseIcon ->
             basePath ++ [ "ic-pause-white.svg" ]
 
-        SearchIcon ->
+        SearchIconWhite ->
             basePath ++ [ "ic-search-white.svg" ]
+
+        SearchIconGrey ->
+            basePath ++ [ "ic-search-grey.svg" ]
 
         CloseIcon ->
             basePath ++ [ "ic-close-white.svg" ]
+
+
+pipelineStatusIcon : PipelineStatus -> Maybe Asset
+pipelineStatusIcon s =
+    case s of
+        PipelineStatusPaused ->
+            Just PipelineStatusIconPaused
+
+        PipelineStatusSucceeded _ ->
+            Just PipelineStatusIconSucceeded
+
+        PipelineStatusPending _ ->
+            Just PipelineStatusIconPending
+
+        PipelineStatusFailed _ ->
+            Just PipelineStatusIconFailed
+
+        PipelineStatusErrored _ ->
+            Just PipelineStatusIconErrored
+
+        PipelineStatusAborted _ ->
+            Just PipelineStatusIconAborted
+
+        PipelineStatusArchived ->
+            Nothing

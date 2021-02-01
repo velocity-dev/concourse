@@ -58,6 +58,10 @@ func (s *scanner) Run(ctx context.Context) error {
 			}()
 			defer waitGroup.Done()
 
+			if resource.CheckEvery() != nil && resource.CheckEvery().Never {
+				return
+			}
+
 			s.check(spanCtx, resource, resourceTypes, resourceTypesChecked)
 		}(resource, resourceTypes)
 	}
@@ -97,9 +101,7 @@ func (s *scanner) check(ctx context.Context, checkable db.Checkable, resourceTyp
 
 	if !created {
 		logger.Debug("check-already-exists")
+	} else {
+		metric.Metrics.ChecksEnqueued.Inc()
 	}
-
-	metric.Metrics.ChecksEnqueued.Inc()
-
-	return
 }

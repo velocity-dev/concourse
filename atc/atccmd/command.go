@@ -38,7 +38,6 @@ import (
 	"github.com/concourse/concourse/atc/db/encryption"
 	"github.com/concourse/concourse/atc/db/lock"
 	"github.com/concourse/concourse/atc/db/migration"
-	"github.com/concourse/concourse/atc/db/migration/batch"
 	"github.com/concourse/concourse/atc/engine"
 	"github.com/concourse/concourse/atc/gc"
 	"github.com/concourse/concourse/atc/lidar"
@@ -103,9 +102,6 @@ var retryingDriverName = "too-many-connections-retrying"
 var flyClientID = "fly"
 var flyClientSecret = "Zmx5"
 
-var workerAvailabilityPollingInterval = 5 * time.Second
-var workerStatusPublishInterval = 1 * time.Minute
-
 type ATCCommand struct {
 	RunCommand RunCommand `command:"run"`
 	Migration  Migration  `command:"migrate"`
@@ -142,9 +138,6 @@ type RunCommand struct {
 	EncryptionKey    flag.Cipher `long:"encryption-key"     description:"A 16 or 32 length key used to encrypt sensitive information before storing it in the database."`
 	OldEncryptionKey flag.Cipher `long:"old-encryption-key" description:"Encryption key previously used for encrypting sensitive information. If provided without a new key, data is encrypted. If provided with a new key, data is re-encrypted."`
 
-	BuildEventsBigintMigrationBatchSize int           `long:"build-events-bigint-batch-size" default:"100000" description:"Number of events to migrate in each batch."`
-	BuildEventsBigintMigrationInterval  time.Duration `long:"build-events-bigint-interval" default:"10s" description:"Interval on which to migrate each batch."`
-
 	DebugBindIP   flag.IP `long:"debug-bind-ip"   default:"127.0.0.1" description:"IP address on which to listen for the pprof debugger endpoints."`
 	DebugBindPort uint16  `long:"debug-bind-port" default:"8079"      description:"Port on which to listen for the pprof debugger endpoints."`
 
@@ -159,8 +152,8 @@ type RunCommand struct {
 	ResourceWithWebhookCheckingInterval time.Duration `long:"resource-with-webhook-checking-interval" default:"1m" description:"Interval on which to check for new versions of resources that has webhook defined."`
 	MaxChecksPerSecond                  int           `long:"max-checks-per-second" description:"Maximum number of checks that can be started per second. If not specified, this will be calculated as (# of resources)/(resource checking interval). -1 value will remove this maximum limit of checks per second."`
 
-	ContainerPlacementStrategy        string        `long:"container-placement-strategy" default:"volume-locality" choice:"volume-locality" choice:"random" choice:"fewest-build-containers" choice:"limit-active-tasks" description:"Method by which a worker is selected during container placement."`
-	MaxActiveTasksPerWorker           int           `long:"max-active-tasks-per-worker" default:"0" description:"Maximum allowed number of active build tasks per worker. Has effect only when used with limit-active-tasks placement strategy. 0 means no limit."`
+	ContainerPlacementStrategyOptions worker.ContainerPlacementStrategyOptions `group:"Container Placement Strategy"`
+
 	BaggageclaimResponseHeaderTimeout time.Duration `long:"baggageclaim-response-header-timeout" default:"1m" description:"How long to wait for Baggageclaim to send the response header."`
 	StreamingArtifactsCompression     string        `long:"streaming-artifacts-compression" default:"gzip" choice:"gzip" choice:"zstd" description:"Compression algorithm for internal streaming."`
 
@@ -199,6 +192,7 @@ type RunCommand struct {
 		HijackGracePeriod      time.Duration `long:"hijack-grace-period" default:"5m" description:"Period after which hijacked containers will be garbage collected"`
 		FailedGracePeriod      time.Duration `long:"failed-grace-period" default:"120h" description:"Period after which failed containers will be garbage collected"`
 		CheckRecyclePeriod     time.Duration `long:"check-recycle-period" default:"1m" description:"Period after which to reap checks that are completed."`
+		VarSourceRecyclePeriod time.Duration `long:"var-source-recycle-period" default:"5m" description:"Period after which to reap var_sources that are not used."`
 	} `group:"Garbage Collection" namespace:"gc"`
 
 	BuildTrackerInterval time.Duration `long:"build-tracker-interval" default:"10s" description:"Interval on which to run build tracking."`
@@ -252,21 +246,28 @@ type RunCommand struct {
 		EnableBuildRerunWhenWorkerDisappears bool `long:"enable-rerun-when-worker-disappears" description:"Enable automatically build rerun when worker disappears or a network error occurs"`
 		EnableAcrossStep                     bool `long:"enable-across-step" description:"Enable the experimental across step to be used in jobs. The API is subject to change."`
 		EnablePipelineInstances              bool `long:"enable-pipeline-instances" description:"Enable pipeline instances"`
+		EnableP2PVolumeStreaming             bool `long:"enable-p2p-volume-streaming" description:"Enable P2P volume streaming"`
 	} `group:"Feature Flags"`
 
 	BaseResourceTypeDefaults flag.File `long:"base-resource-type-defaults" description:"Base resource type defaults"`
+
+	P2pVolumeStreamingTimeout time.Duration `long:"p2p-volume-streaming-timeout" description:"Timeout value of p2p volume streaming" default:"15m"`
 }
 
 type Migration struct {
-	Postgres           flag.PostgresConfig `group:"PostgreSQL Configuration" namespace:"postgres"`
-	EncryptionKey      flag.Cipher         `long:"encryption-key"     description:"A 16 or 32 length key used to encrypt sensitive information before storing it in the database."`
-	OldEncryptionKey   flag.Cipher         `long:"old-encryption-key" description:"Encryption key previously used for encrypting sensitive information. If provided without a new key, data is decrypted. If provided with a new key, data is re-encrypted."`
-	CurrentDBVersion   bool                `long:"current-db-version" description:"Print the current database version and exit"`
-	SupportedDBVersion bool                `long:"supported-db-version" description:"Print the max supported database version and exit"`
-	MigrateDBToVersion int                 `long:"migrate-db-to-version" description:"Migrate to the specified database version and exit"`
+	Postgres               flag.PostgresConfig `group:"PostgreSQL Configuration" namespace:"postgres"`
+	EncryptionKey          flag.Cipher         `long:"encryption-key"     description:"A 16 or 32 length key used to encrypt sensitive information before storing it in the database."`
+	OldEncryptionKey       flag.Cipher         `long:"old-encryption-key" description:"Encryption key previously used for encrypting sensitive information. If provided without a new key, data is decrypted. If provided with a new key, data is re-encrypted."`
+	CurrentDBVersion       bool                `long:"current-db-version" description:"Print the current database version and exit"`
+	SupportedDBVersion     bool                `long:"supported-db-version" description:"Print the max supported database version and exit"`
+	MigrateDBToVersion     int                 `long:"migrate-db-to-version" description:"Migrate to the specified database version and exit"`
+	MigrateToLatestVersion bool                `long:"migrate-to-latest-version" description:"Migrate to the latest migration version and exit"`
 }
 
 func (m *Migration) Execute(args []string) error {
+	if m.MigrateToLatestVersion {
+		return m.migrateToLatestVersion()
+	}
 	if m.CurrentDBVersion {
 		return m.currentDBVersion()
 	}
@@ -279,7 +280,7 @@ func (m *Migration) Execute(args []string) error {
 	if m.OldEncryptionKey.AEAD != nil {
 		return m.rotateEncryptionKey()
 	}
-	return errors.New("must specify one of `--current-db-version`, `--supported-db-version`, `--migrate-db-to-version`, or `--old-encryption-key`")
+	return errors.New("must specify one of `--migrate-to-latest-version`, `--current-db-version`, `--supported-db-version`, `--migrate-db-to-version`, or `--old-encryption-key`")
 
 }
 
@@ -369,6 +370,23 @@ func (cmd *Migration) rotateEncryptionKey() error {
 	)
 
 	version, err := helper.CurrentVersion()
+	if err != nil {
+		return err
+	}
+
+	return helper.MigrateToVersion(version)
+}
+
+func (cmd *Migration) migrateToLatestVersion() error {
+	helper := migration.NewOpenHelper(
+		defaultDriverName,
+		cmd.Postgres.ConnectionString(),
+		nil,
+		nil,
+		nil,
+	)
+
+	version, err := helper.SupportedVersion()
 	if err != nil {
 		return err
 	}
@@ -543,17 +561,22 @@ func (cmd *RunCommand) Runner(positionalArguments []string) (ifrit.Runner, error
 
 	lockFactory := lock.NewLockFactory(lockConn, metric.LogLockAcquired, metric.LogLockReleased)
 
-	apiConn, err := cmd.constructDBConn(retryingDriverName, logger, cmd.APIMaxOpenConnections, "api", lockFactory)
+	apiConn, err := cmd.constructDBConn(retryingDriverName, logger, cmd.APIMaxOpenConnections, cmd.APIMaxOpenConnections/2, "api", lockFactory)
 	if err != nil {
 		return nil, err
 	}
 
-	backendConn, err := cmd.constructDBConn(retryingDriverName, logger, cmd.BackendMaxOpenConnections, "backend", lockFactory)
+	backendConn, err := cmd.constructDBConn(retryingDriverName, logger, cmd.BackendMaxOpenConnections, cmd.BackendMaxOpenConnections/2, "backend", lockFactory)
 	if err != nil {
 		return nil, err
 	}
 
-	gcConn, err := cmd.constructDBConn(retryingDriverName, logger, 5, "gc", lockFactory)
+	gcConn, err := cmd.constructDBConn(retryingDriverName, logger, 5, 2, "gc", lockFactory)
+	if err != nil {
+		return nil, err
+	}
+
+	workerConn, err := cmd.constructDBConn(retryingDriverName, logger, 1, 1, "worker", lockFactory)
 	if err != nil {
 		return nil, err
 	}
@@ -571,12 +594,12 @@ func (cmd *RunCommand) Runner(positionalArguments []string) (ifrit.Runner, error
 	cmd.varSourcePool = creds.NewVarSourcePool(
 		logger.Session("var-source-pool"),
 		cmd.CredentialManagement,
-		5*time.Minute,
+		cmd.GC.VarSourceRecyclePeriod,
 		1*time.Minute,
 		clock.NewClock(),
 	)
 
-	members, err := cmd.constructMembers(logger, reconfigurableSink, apiConn, backendConn, gcConn, storage, lockFactory, secretManager)
+	members, err := cmd.constructMembers(logger, reconfigurableSink, apiConn, workerConn, backendConn, gcConn, storage, lockFactory, secretManager)
 	if err != nil {
 		return nil, err
 	}
@@ -604,7 +627,7 @@ func (cmd *RunCommand) Runner(positionalArguments []string) (ifrit.Runner, error
 	}
 
 	onExit := func() {
-		for _, closer := range []Closer{lockConn, apiConn, backendConn, gcConn, storage} {
+		for _, closer := range []Closer{lockConn, apiConn, backendConn, gcConn, storage, workerConn} {
 			closer.Close()
 		}
 
@@ -618,6 +641,7 @@ func (cmd *RunCommand) constructMembers(
 	logger lager.Logger,
 	reconfigurableSink *lager.ReconfigurableSink,
 	apiConn db.Conn,
+	workerConn db.Conn,
 	backendConn db.Conn,
 	gcConn db.Conn,
 	storage storage.Storage,
@@ -639,7 +663,7 @@ func (cmd *RunCommand) constructMembers(
 		return nil, err
 	}
 
-	apiMembers, err := cmd.constructAPIMembers(logger, reconfigurableSink, apiConn, storage, lockFactory, secretManager, policyChecker)
+	apiMembers, err := cmd.constructAPIMembers(logger, reconfigurableSink, apiConn, workerConn, storage, lockFactory, secretManager, policyChecker)
 	if err != nil {
 		return nil, err
 	}
@@ -702,6 +726,7 @@ func (cmd *RunCommand) constructAPIMembers(
 	logger lager.Logger,
 	reconfigurableSink *lager.ReconfigurableSink,
 	dbConn db.Conn,
+	workerConn db.Conn,
 	storage storage.Storage,
 	lockFactory lock.LockFactory,
 	secretManager creds.Secrets,
@@ -714,6 +739,7 @@ func (cmd *RunCommand) constructAPIMembers(
 	}
 
 	teamFactory := db.NewTeamFactory(dbConn, lockFactory)
+	workerTeamFactory := db.NewTeamFactory(workerConn, lockFactory)
 
 	_, err = teamFactory.CreateDefaultTeamIfNotExists()
 	if err != nil {
@@ -736,14 +762,12 @@ func (cmd *RunCommand) constructAPIMembers(
 	dbWorkerTaskCacheFactory := db.NewWorkerTaskCacheFactory(dbConn)
 	dbTaskCacheFactory := db.NewTaskCacheFactory(dbConn)
 	dbVolumeRepository := db.NewVolumeRepository(dbConn)
-	dbWorkerFactory := db.NewWorkerFactory(dbConn)
+	dbWorkerFactory := db.NewWorkerFactory(workerConn)
 	workerVersion, err := workerVersion()
 	if err != nil {
 		return nil, err
 	}
 
-	// XXX(substeps): why is this unconditional?
-	compressionLib := compression.NewGzipCompression()
 	workerProvider := worker.NewDBWorkerProvider(
 		lockFactory,
 		retryhttp.NewExponentialBackOffFactory(5*time.Minute),
@@ -763,7 +787,6 @@ func (cmd *RunCommand) constructAPIMembers(
 	)
 
 	pool := worker.NewPool(workerProvider)
-	workerClient := worker.NewClient(pool, workerProvider, compressionLib, workerAvailabilityPollingInterval, workerStatusPublishInterval)
 
 	credsManagers := cmd.CredentialManagers
 	dbPipelineFactory := db.NewPipelineFactory(dbConn, lockFactory)
@@ -804,6 +827,7 @@ func (cmd *RunCommand) constructAPIMembers(
 		logger,
 		reconfigurableSink,
 		teamFactory,
+		workerTeamFactory,
 		dbPipelineFactory,
 		dbJobFactory,
 		dbResourceFactory,
@@ -815,7 +839,7 @@ func (cmd *RunCommand) constructAPIMembers(
 		dbCheckFactory,
 		dbResourceConfigFactory,
 		userFactory,
-		workerClient,
+		pool,
 		secretManager,
 		credsManagers,
 		accessFactory,
@@ -1014,11 +1038,8 @@ func (cmd *RunCommand) backendComponents(
 	)
 
 	pool := worker.NewPool(workerProvider)
-	workerClient := worker.NewClient(pool,
-		workerProvider,
-		compressionLib,
-		workerAvailabilityPollingInterval,
-		workerStatusPublishInterval)
+	artifactStreamer := worker.NewArtifactStreamer(pool, compressionLib)
+	artifactSourcer := worker.NewArtifactSourcer(compressionLib, pool, cmd.FeatureFlags.EnableP2PVolumeStreaming, cmd.P2pVolumeStreamingTimeout)
 
 	defaultLimits, err := cmd.parseDefaultLimits()
 	if err != nil {
@@ -1040,8 +1061,10 @@ func (cmd *RunCommand) backendComponents(
 
 	engine := cmd.constructEngine(
 		pool,
-		workerClient,
+		artifactStreamer,
+		artifactSourcer,
 		resourceFactory,
+		dbWorkerFactory,
 		teamFactory,
 		dbBuildFactory,
 		dbResourceCacheFactory,
@@ -1101,18 +1124,6 @@ func (cmd *RunCommand) backendComponents(
 				Interval: cmd.BuildTrackerInterval,
 			},
 			Runnable: builds.NewTracker(dbBuildFactory, engine),
-		},
-		{
-			Component: atc.Component{
-				Name:     atc.ComponentBatchMigrator,
-				Interval: cmd.BuildEventsBigintMigrationInterval,
-			},
-			Runnable: batch.Runner{
-				Migrator: batch.BuildEventsBigintMigrator{
-					DB:        dbConn,
-					BatchSize: cmd.BuildEventsBigintMigrationBatchSize,
-				},
-			},
 		},
 		{
 			Component: atc.Component{
@@ -1543,13 +1554,14 @@ func (cmd *RunCommand) configureMetrics(logger lager.Logger) error {
 func (cmd *RunCommand) constructDBConn(
 	driverName string,
 	logger lager.Logger,
-	maxConn int,
+	maxConns int,
+	idleConns int,
 	connectionName string,
 	lockFactory lock.LockFactory,
 ) (db.Conn, error) {
 	dbConn, err := db.Open(logger.Session("db"), driverName, cmd.Postgres.ConnectionString(), cmd.newKey(), cmd.oldKey(), connectionName, lockFactory)
 	if err != nil {
-		return nil, fmt.Errorf("failed to migrate database: %s", err)
+		return nil, fmt.Errorf("failed to connect to database: %s", err)
 	}
 
 	// Instrument with Metrics
@@ -1562,8 +1574,8 @@ func (cmd *RunCommand) constructDBConn(
 	}
 
 	// Prepare
-	dbConn.SetMaxOpenConns(maxConn)
-	dbConn.SetMaxIdleConns(maxConn / 2)
+	dbConn.SetMaxOpenConns(maxConns)
+	dbConn.SetMaxIdleConns(idleConns)
 
 	return dbConn, nil
 }
@@ -1586,25 +1598,7 @@ func (cmd *RunCommand) constructLockConn(driverName string) (*sql.DB, error) {
 }
 
 func (cmd *RunCommand) chooseBuildContainerStrategy() (worker.ContainerPlacementStrategy, error) {
-	var strategy worker.ContainerPlacementStrategy
-	if cmd.ContainerPlacementStrategy != "limit-active-tasks" && cmd.MaxActiveTasksPerWorker != 0 {
-		return nil, errors.New("max-active-tasks-per-worker has only effect with limit-active-tasks strategy")
-	}
-	if cmd.MaxActiveTasksPerWorker < 0 {
-		return nil, errors.New("max-active-tasks-per-worker must be greater or equal than 0")
-	}
-	switch cmd.ContainerPlacementStrategy {
-	case "random":
-		strategy = worker.NewRandomPlacementStrategy()
-	case "fewest-build-containers":
-		strategy = worker.NewFewestBuildContainersPlacementStrategy()
-	case "limit-active-tasks":
-		strategy = worker.NewLimitActiveTasksPlacementStrategy(cmd.MaxActiveTasksPerWorker)
-	default:
-		strategy = worker.NewVolumeLocalityPlacementStrategy()
-	}
-
-	return strategy, nil
+	return worker.NewContainerPlacementStrategy(cmd.ContainerPlacementStrategyOptions)
 }
 
 func (cmd *RunCommand) configureAuthForDefaultTeam(teamFactory db.TeamFactory) error {
@@ -1632,8 +1626,10 @@ func (cmd *RunCommand) configureAuthForDefaultTeam(teamFactory db.TeamFactory) e
 
 func (cmd *RunCommand) constructEngine(
 	workerPool worker.Pool,
-	workerClient worker.Client,
+	artifactStreamer worker.ArtifactStreamer,
+	artifactSourcer worker.ArtifactSourcer,
 	resourceFactory resource.ResourceFactory,
+	workerFactory db.WorkerFactory,
 	teamFactory db.TeamFactory,
 	buildFactory db.BuildFactory,
 	resourceCacheFactory db.ResourceCacheFactory,
@@ -1649,7 +1645,8 @@ func (cmd *RunCommand) constructEngine(
 		engine.NewStepperFactory(
 			engine.NewCoreStepFactory(
 				workerPool,
-				workerClient,
+				artifactStreamer,
+				artifactSourcer,
 				resourceFactory,
 				teamFactory,
 				buildFactory,
@@ -1657,12 +1654,14 @@ func (cmd *RunCommand) constructEngine(
 				resourceConfigFactory,
 				defaultLimits,
 				strategy,
-				lockFactory,
 				cmd.GlobalResourceCheckTimeout,
 			),
 			cmd.ExternalURL.String(),
 			rateLimiter,
 			policyChecker,
+			artifactSourcer,
+			workerFactory,
+			lockFactory,
 		),
 		secretManager,
 		cmd.varSourcePool,
@@ -1819,6 +1818,7 @@ func (cmd *RunCommand) constructAPIHandler(
 	logger lager.Logger,
 	reconfigurableSink *lager.ReconfigurableSink,
 	teamFactory db.TeamFactory,
+	workerTeamFactory db.TeamFactory,
 	dbPipelineFactory db.PipelineFactory,
 	dbJobFactory db.JobFactory,
 	dbResourceFactory db.ResourceFactory,
@@ -1830,7 +1830,7 @@ func (cmd *RunCommand) constructAPIHandler(
 	dbCheckFactory db.CheckFactory,
 	resourceConfigFactory db.ResourceConfigFactory,
 	dbUserFactory db.UserFactory,
-	workerClient worker.Client,
+	workerPool worker.Pool,
 	secretManager creds.Secrets,
 	credsManagers creds.Managers,
 	accessFactory accessor.AccessFactory,
@@ -1898,6 +1898,7 @@ func (cmd *RunCommand) constructAPIHandler(
 		dbJobFactory,
 		dbResourceFactory,
 		dbWorkerFactory,
+		workerTeamFactory,
 		dbVolumeRepository,
 		dbContainerRepository,
 		gcContainerDestroyer,
@@ -1908,7 +1909,7 @@ func (cmd *RunCommand) constructAPIHandler(
 
 		buildserver.NewEventHandler,
 
-		workerClient,
+		workerPool,
 
 		reconfigurableSink,
 

@@ -389,13 +389,14 @@ view session model =
                 (id "top-bar-app" :: Views.Styles.topBar displayPaused)
                 [ SideBar.hamburgerMenu session
                 , TopBar.concourseLogo
-                , TopBar.breadcrumbs route
+                , TopBar.breadcrumbs session route
                 , PinMenu.viewPinMenu session model
                 , Html.div (id "top-bar-favorited-icon" :: Styles.favoritedIcon)
                     [ FavoritedIcon.view
                         { isHovered = HoverState.isHovered (TopBarFavoritedIcon <| getPipelineId model.pipeline) session.hovered
                         , isFavorited =
                             Set.member (getPipelineId model.pipeline) session.favoritedPipelines
+                        , isSideBar = False
                         , domID = TopBarFavoritedIcon <| getPipelineId model.pipeline
                         }
                         [ style "margin" "17px" ]

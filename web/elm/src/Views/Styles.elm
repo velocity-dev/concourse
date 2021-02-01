@@ -3,12 +3,14 @@ module Views.Styles exposing
     , breadcrumbComponent
     , breadcrumbContainer
     , breadcrumbItem
+    , clusterName
     , concourseLogo
     , defaultFont
     , fontFamilyDefault
     , fontWeightBold
     , fontWeightDefault
     , fontWeightLight
+    , instanceGroupBadge
     , pageBelowTopBar
     , pageHeaderHeight
     , pageIncludingTopBar
@@ -20,6 +22,7 @@ module Views.Styles exposing
     )
 
 import Assets
+import ColorValues
 import Colors
 import Html
 import Html.Attributes exposing (style)
@@ -125,8 +128,8 @@ topBar isPaused =
             Colors.paused
 
         else
-            Colors.frame
-    , style "border-bottom" <| "1px solid " ++ Colors.frame
+            Colors.topBarBackground
+    , style "border-bottom" <| "1px solid " ++ Colors.border
     ]
 
 
@@ -141,6 +144,15 @@ concourseLogo =
     , style "display" "inline-block"
     , style "width" "54px"
     , style "height" "54px"
+    ]
+
+
+clusterName : List (Html.Attribute msg)
+clusterName =
+    [ style "font-size" "21px"
+    , style "color" Colors.white
+    , style "letter-spacing" "0.1em"
+    , style "margin-left" "10px"
     ]
 
 
@@ -185,6 +197,7 @@ breadcrumbItem clickable =
 
         else
             "default"
+    , style "color" Colors.white
     ]
 
 
@@ -226,7 +239,8 @@ type TooltipPosition
 
 pauseToggleTooltip : TooltipPosition -> List (Html.Attribute msg)
 pauseToggleTooltip ttp =
-    [ style "background-color" "#9b9b9b"
+    [ style "background-color" Colors.tooltipBackground
+    , style "color" Colors.tooltipText
     , style "position" "absolute"
     , style
         (case ttp of
@@ -252,3 +266,19 @@ separator topMargin =
         , style "margin-top" <| String.fromFloat topMargin ++ "px"
         ]
         []
+
+
+instanceGroupBadge : String -> List (Html.Attribute msg)
+instanceGroupBadge backgroundColor =
+    [ style "background-color" backgroundColor
+    , style "border-radius" "4px"
+    , style "color" ColorValues.grey90
+    , style "display" "flex"
+    , style "letter-spacing" "0"
+    , style "margin-right" "8px"
+    , style "width" "20px"
+    , style "height" "20px"
+    , style "flex-shrink" "0"
+    , style "align-items" "center"
+    , style "justify-content" "center"
+    ]

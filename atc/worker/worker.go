@@ -78,8 +78,9 @@ type Worker interface {
 
 	GardenClient() gclient.Client
 	ActiveTasks() (int, error)
-	IncreaseActiveTasks() error
-	DecreaseActiveTasks() error
+
+	ActiveContainers() int
+	ActiveVolumes() int
 }
 
 type gardenWorker struct {
@@ -786,4 +787,12 @@ func (worker *gardenWorker) IncreaseActiveTasks() error {
 }
 func (worker *gardenWorker) DecreaseActiveTasks() error {
 	return worker.dbWorker.DecreaseActiveTasks()
+}
+
+func (worker *gardenWorker) ActiveContainers() int {
+	return worker.dbWorker.ActiveContainers()
+}
+
+func (worker *gardenWorker) ActiveVolumes() int {
+	return worker.dbWorker.ActiveVolumes()
 }

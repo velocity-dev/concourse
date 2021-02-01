@@ -228,7 +228,7 @@ var _ = Describe("Fly CLI", func() {
 			})
 
 			It("returns all the builds", func() {
-				runningBuildDuration := time.Duration(time.Now().Unix()-runningBuildStartTime.Unix()) * time.Second
+				runningBuildDuration := time.Since(runningBuildStartTime)
 
 				Eventually(session.Out).Should(PrintTable(ui.Table{
 					Headers: expectedHeaders,
@@ -242,7 +242,7 @@ var _ = Describe("Fly CLI", func() {
 							{
 								Contents: TableDurationWithDelta{
 									Duration: runningBuildDuration,
-									Delta:    2 * time.Second,
+									Delta:    20 * time.Second,
 									Suffix:   "+",
 								}.String(),
 							},
@@ -882,7 +882,7 @@ var _ = Describe("Fly CLI", func() {
 				cmdArgs = append(cmdArgs, "some-pipeline/branch:master")
 
 				expectedURL = "/api/v1/teams/main/pipelines/some-pipeline/builds"
-				queryParams = []string{"instance_vars=%7B%22branch%22%3A%22master%22%7D", "limit=50"}
+				queryParams = []string{"vars.branch=%22master%22", "limit=50"}
 				returnedStatusCode = http.StatusOK
 				returnedBuilds = []atc.Build{
 					{
@@ -942,7 +942,7 @@ var _ = Describe("Fly CLI", func() {
 					cmdArgs = append(cmdArgs, "-c")
 					cmdArgs = append(cmdArgs, "98")
 
-					queryParams = []string{"instance_vars=%7B%22branch%22%3A%22master%22%7D", "limit=98"}
+					queryParams = []string{"vars.branch=%22master%22", "limit=98"}
 					returnedStatusCode = http.StatusOK
 					returnedBuilds = []atc.Build{
 						{
@@ -986,7 +986,7 @@ var _ = Describe("Fly CLI", func() {
 					cmdArgs = append(cmdArgs, "--since", since.Format(timeLayout))
 					cmdArgs = append(cmdArgs, "--until", until.Format(timeLayout))
 
-					queryParams = []string{"instance_vars=%7B%22branch%22%3A%22master%22%7D", "limit=50", fmt.Sprintf("from=%d", since.Unix()), fmt.Sprintf("to=%d", until.Unix()), "timestamps=true"}
+					queryParams = []string{"vars.branch=%22master%22", "limit=50", fmt.Sprintf("from=%d", since.Unix()), fmt.Sprintf("to=%d", until.Unix()), "timestamps=true"}
 				})
 
 				It("returns the builds correctly", func() {

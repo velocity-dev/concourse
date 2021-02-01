@@ -61,7 +61,7 @@ all =
                 model =
                     { init
                         | fetchedResources =
-                            Just [ Data.resource "v1" |> Data.withName "test" ]
+                            Just [ Data.resource (Just "v1") |> Data.withName "test" ]
                     }
             in
             [ test "is hoverable" <|
@@ -151,7 +151,7 @@ all =
                                               , color = Colors.text
                                               }
                                             ]
-                                      , background = Colors.sideBar
+                                      , background = Colors.pinMenuBackground
                                       , paddingPx = 10
                                       , hoverable = True
                                       , onClick =
@@ -198,7 +198,7 @@ all =
                                               , color = Colors.text
                                               }
                                             ]
-                                      , background = Colors.sideBarActive
+                                      , background = Colors.pinMenuHover
                                       , paddingPx = 10
                                       , hoverable = True
                                       , onClick =

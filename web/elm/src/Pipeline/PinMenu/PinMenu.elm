@@ -169,10 +169,10 @@ pinMenu { hovered } model =
                                         == HoverState.Hovered
                                             (PinMenuDropDown resourceName)
                                 then
-                                    Colors.sideBarActive
+                                    Colors.pinMenuHover
 
                                 else
-                                    Colors.sideBar
+                                    Colors.pinMenuBackground
                             , hoverable = True
                             , onClick =
                                 GoToRoute <|
@@ -180,6 +180,7 @@ pinMenu { hovered } model =
                                         { id =
                                             { teamName = pipeline.teamName
                                             , pipelineName = pipeline.pipelineName
+                                            , pipelineInstanceVars = pipeline.pipelineInstanceVars
                                             , resourceName = resourceName
                                             }
                                         , page = Nothing

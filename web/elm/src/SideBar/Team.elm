@@ -5,6 +5,7 @@ import Concourse
 import HoverState
 import Message.Message exposing (DomID(..), Message(..), PipelinesSection(..))
 import Set exposing (Set)
+import SideBar.InstanceGroup as InstanceGroup
 import SideBar.Pipeline as Pipeline
 import SideBar.Styles as Styles
 import SideBar.Views as Views
@@ -27,11 +28,11 @@ team :
     }
     -> { name : String, isExpanded : Bool }
     -> Views.Team
-team session t =
+team params t =
     let
         domID =
             SideBarTeam
-                (if session.isFavoritesSection then
+                (if params.isFavoritesSection then
                     FavoritesSection
 
                  else
@@ -40,30 +41,20 @@ team session t =
                 t.name
 
         isHovered =
-            HoverState.isHovered domID session.hovered
+            HoverState.isHovered domID params.hovered
 
         isCurrent =
-            (session.currentPipeline |> Maybe.map .teamName) == Just t.name
+            (params.currentPipeline |> Maybe.map .teamName) == Just t.name
     in
     { icon =
-        if isCurrent then
+        if isHovered || isCurrent then
             Styles.Bright
 
-        else if isHovered || t.isExpanded then
-            Styles.GreyedOut
-
         else
-            Styles.Dim
+            Styles.GreyedOut
     , collapseIcon =
         { opacity =
-            if isCurrent then
-                Styles.Bright
-
-            else if t.isExpanded then
-                Styles.GreyedOut
-
-            else
-                Styles.Dim
+            Styles.Bright
         , asset =
             if t.isExpanded then
                 Assets.MinusIcon
@@ -73,16 +64,27 @@ team session t =
         }
     , name =
         { text = t.name
-        , opacity =
-            if isCurrent || isHovered then
-                Styles.Bright
+        , color =
+            if isHovered || isCurrent then
+                Styles.White
 
             else
-                Styles.GreyedOut
+                Styles.LightGrey
         , domID = domID
         }
     , isExpanded = t.isExpanded
-    , pipelines = List.map (Pipeline.pipeline session) session.pipelines
+    , listItems =
+        params.pipelines
+            |> Concourse.groupPipelines
+            |> List.map
+                (\g ->
+                    case g of
+                        Concourse.RegularPipeline p ->
+                            Pipeline.pipeline params p |> Views.PipelineListItem
+
+                        Concourse.InstanceGroup p ps ->
+                            InstanceGroup.instanceGroup params p ps |> Views.InstanceGroupListItem
+                )
     , background =
         if isHovered then
             Styles.Light

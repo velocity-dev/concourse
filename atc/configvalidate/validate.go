@@ -9,6 +9,7 @@ import (
 	"github.com/concourse/concourse/atc"
 	. "github.com/concourse/concourse/atc"
 	"github.com/concourse/concourse/atc/creds"
+	"github.com/gobwas/glob"
 )
 
 func formatErr(groupName string, err error) string {
@@ -84,7 +85,10 @@ func validateGroups(c Config) ([]ConfigWarning, error) {
 			identifier = fmt.Sprintf("groups.%s", group.Name)
 		}
 
-		warning := ValidateIdentifier(group.Name, identifier)
+		warning, err := ValidateIdentifier(group.Name, identifier)
+		if err != nil {
+			errorMessages = append(errorMessages, err.Error())
+		}
 		if warning != nil {
 			warnings = append(warnings, *warning)
 		}
@@ -96,13 +100,23 @@ func validateGroups(c Config) ([]ConfigWarning, error) {
 			groupNames[group.Name] = 1
 		}
 
-		for _, job := range group.Jobs {
-			_, exists := c.Jobs.Lookup(job)
-			if !exists {
+		for _, jobGlob := range group.Jobs {
+			matchingJob := false
+			g, err := glob.Compile(jobGlob)
+			if err != nil {
 				errorMessages = append(errorMessages,
-					fmt.Sprintf("group '%s' has unknown job '%s'", group.Name, job))
-			} else {
-				jobsGrouped[job] = true
+					fmt.Sprintf("invalid glob expression '%s' for group '%s'", jobGlob, group.Name))
+				continue
+			}
+			for _, job := range c.Jobs {
+				if g.Match(job.Name) {
+					jobsGrouped[job.Name] = true
+					matchingJob = true
+				}
+			}
+			if !matchingJob {
+				errorMessages = append(errorMessages,
+					fmt.Sprintf("no jobs match '%s' for group '%s'", jobGlob, group.Name))
 			}
 		}
 
@@ -147,7 +161,10 @@ func validateResources(c Config) ([]ConfigWarning, error) {
 			identifier = fmt.Sprintf("resources.%s", resource.Name)
 		}
 
-		warning := ValidateIdentifier(resource.Name, identifier)
+		warning, err := ValidateIdentifier(resource.Name, identifier)
+		if err != nil {
+			errorMessages = append(errorMessages, err.Error())
+		}
 		if warning != nil {
 			warnings = append(warnings, *warning)
 		}
@@ -189,7 +206,10 @@ func validateResourceTypes(c Config) ([]ConfigWarning, error) {
 			identifier = fmt.Sprintf("resource_types.%s", resourceType.Name)
 		}
 
-		warning := ValidateIdentifier(resourceType.Name, identifier)
+		warning, err := ValidateIdentifier(resourceType.Name, identifier)
+		if err != nil {
+			errorMessages = append(errorMessages, err.Error())
+		}
 		if warning != nil {
 			warnings = append(warnings, *warning)
 		}
@@ -267,7 +287,10 @@ func validateJobs(c Config) ([]ConfigWarning, error) {
 			identifier = fmt.Sprintf("jobs.%s", job.Name)
 		}
 
-		warning := ValidateIdentifier(job.Name, identifier)
+		warning, err := ValidateIdentifier(job.Name, identifier)
+		if err != nil {
+			errorMessages = append(errorMessages, err.Error())
+		}
 		if warning != nil {
 			warnings = append(warnings, *warning)
 		}
@@ -360,7 +383,10 @@ func validateVarSources(c Config) ([]ConfigWarning, error) {
 			identifier = fmt.Sprintf("var_sources.%s", cm.Name)
 		}
 
-		warning := ValidateIdentifier(cm.Name, identifier)
+		warning, err := ValidateIdentifier(cm.Name, identifier)
+		if err != nil {
+			errorMessages = append(errorMessages, err.Error())
+		}
 		if warning != nil {
 			warnings = append(warnings, *warning)
 		}

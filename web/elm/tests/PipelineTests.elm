@@ -3,6 +3,8 @@ module PipelineTests exposing (all)
 import Application.Application as Application
 import Assets
 import Char
+import ColorValues
+import Colors
 import Common exposing (defineHoverBehaviour, queryView)
 import Concourse
 import Concourse.Cli exposing (Cli(..))
@@ -14,7 +16,7 @@ import Json.Encode
 import Keyboard
 import Message.Callback as Callback
 import Message.Effects as Effects
-import Message.Message exposing (Message(..))
+import Message.Message exposing (DomID(..), Message(..), PipelinesSection(..))
 import Message.Subscription as Subscription
     exposing
         ( Delivery(..)
@@ -61,6 +63,13 @@ flags =
     , authToken = ""
     , pipelineRunningKeyframes = ""
     }
+
+
+pipelineFetched pipeline =
+    Application.handleCallback (Callback.PipelineFetched (Ok <| pipeline))
+        >> Tuple.first
+        >> Application.handleCallback (Callback.AllPipelinesFetched (Ok <| [ pipeline ]))
+        >> Tuple.first
 
 
 all : Test
@@ -110,7 +119,7 @@ all =
                                 |> Query.find [ id "groups-bar" ]
                                 |> Query.has
                                     [ style "background-color" "#2b2a2a"
-                                    , style "color" "#ffffff"
+                                    , style "color" "#FFFFFF"
                                     ]
                     , test "lays out groups in a horizontal list" <|
                         \_ ->
@@ -304,11 +313,11 @@ all =
                     |> Expect.equal "pipelineName - Concourse"
         , test "pipeline background should be set from display config" <|
             \_ ->
-                Common.init "/teams/team/pipelines/pipelineName"
+                Common.init "/teams/team/pipelines/pipeline"
                     |> Application.handleCallback
                         (Callback.PipelineFetched
                             (Ok <|
-                                (Data.pipeline "team" 0
+                                (Data.pipeline "team" 1
                                     |> Data.withName "pipeline"
                                     |> Data.withBackgroundImage "some-background.jpg"
                                 )
@@ -325,6 +334,22 @@ all =
                         , style "opacity" "30%"
                         , style "filter" "grayscale(1)"
                         ]
+        , describe "sidebar tooltips"
+            [ test "hovering over instance group gets its viewport" <|
+                let
+                    domID =
+                        SideBarInstanceGroup AllPipelinesSection "main" "group"
+                in
+                \_ ->
+                    Common.init "/teams/team/pipelines/pipeline"
+                        |> Application.update
+                            (Msgs.Update <|
+                                Hover <|
+                                    Just domID
+                            )
+                        |> Tuple.second
+                        |> Common.contains (Effects.GetViewportOf domID)
+            ]
         , describe "update" <|
             let
                 defaultModel : Pipeline.Model
@@ -484,7 +509,7 @@ all =
                 , it "top bar has a dark grey background" <|
                     Common.queryView
                         >> Query.find [ id "top-bar-app" ]
-                        >> Query.has [ style "background-color" "#1e1d1d" ]
+                        >> Query.has [ style "background-color" ColorValues.grey100 ]
                 , it "top bar lays out contents horizontally" <|
                     Common.queryView
                         >> Query.find [ id "top-bar-app" ]
@@ -602,6 +627,7 @@ all =
             , test "breadcrumb list is laid out horizontally" <|
                 \_ ->
                     Common.init "/teams/team/pipelines/pipeline"
+                        |> pipelineFetched (Data.pipeline "team" 1 |> Data.withName "pipeline")
                         |> Common.queryView
                         |> Query.find [ id "top-bar-app" ]
                         |> Query.find [ id "breadcrumbs" ]
@@ -612,6 +638,7 @@ all =
             , test "pipeline breadcrumb is laid out horizontally" <|
                 \_ ->
                     Common.init "/teams/team/pipelines/pipeline"
+                        |> pipelineFetched (Data.pipeline "team" 1 |> Data.withName "pipeline")
                         |> Common.queryView
                         |> Query.find [ id "top-bar-app" ]
                         |> Query.find [ id "breadcrumb-pipeline" ]
@@ -619,6 +646,7 @@ all =
             , test "top bar has pipeline breadcrumb with icon rendered first" <|
                 \_ ->
                     Common.init "/teams/team/pipelines/pipeline"
+                        |> pipelineFetched (Data.pipeline "team" 1 |> Data.withName "pipeline")
                         |> Common.queryView
                         |> Query.find [ id "top-bar-app" ]
                         |> Query.find [ id "breadcrumb-pipeline" ]
@@ -628,6 +656,7 @@ all =
             , test "top bar has pipeline name after pipeline icon" <|
                 \_ ->
                     Common.init "/teams/team/pipelines/pipeline"
+                        |> pipelineFetched (Data.pipeline "team" 1 |> Data.withName "pipeline")
                         |> Common.queryView
                         |> Query.find [ id "top-bar-app" ]
                         |> Query.find [ id "breadcrumb-pipeline" ]
@@ -658,9 +687,7 @@ all =
                         Query.has
                             (iconSelector
                                 { size = "20px"
-                                , image =
-                                    Assets.FavoritedToggleIcon
-                                        False
+                                , image = Assets.FavoritedToggleIcon { isFavorited = False, isHovered = False, isSideBar = False }
                                 }
                             )
                 in
@@ -675,25 +702,23 @@ all =
                     , unhoveredSelector =
                         { description = "faded star icon"
                         , selector =
-                            [ style "opacity" "0.5"
-                            , style "cursor" "pointer"
+                            [ style "cursor" "pointer"
                             , style "margin" "17px"
                             ]
                                 ++ iconSelector
                                     { size = "20px"
-                                    , image = Assets.FavoritedToggleIcon False
+                                    , image = Assets.FavoritedToggleIcon { isFavorited = False, isHovered = False, isSideBar = False }
                                     }
                         }
                     , hoveredSelector =
                         { description = "bright star icon"
                         , selector =
-                            [ style "opacity" "1"
-                            , style "cursor" "pointer"
+                            [ style "cursor" "pointer"
                             , style "margin" "17px"
                             ]
                                 ++ iconSelector
                                     { size = "20px"
-                                    , image = Assets.FavoritedToggleIcon False
+                                    , image = Assets.FavoritedToggleIcon { isFavorited = False, isHovered = True, isSideBar = False }
                                     }
                         }
                     , hoverable = Message.Message.TopBarFavoritedIcon -1
@@ -783,7 +808,7 @@ givenPinnedResource =
     Application.handleCallback
         (Callback.ResourcesFetched <|
             Ok
-                [ Data.resource "v1" ]
+                [ Data.resource (Just "v1") ]
         )
         >> Tuple.first
 
@@ -793,8 +818,8 @@ givenMultiplePinnedResources =
     Application.handleCallback
         (Callback.ResourcesFetched <|
             Ok
-                [ Data.resource "v1"
-                , Data.resource "v2"
+                [ Data.resource (Just "v1")
+                , Data.resource (Just "v2")
                 ]
         )
         >> Tuple.first
