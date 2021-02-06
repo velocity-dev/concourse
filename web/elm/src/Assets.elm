@@ -210,7 +210,7 @@ toPath asset =
             basePath ++ [ "passport-officer-ic.svg" ]
 
         ConcourseLogoWhite ->
-            basePath ++ [ "concourse-logo-white.svg" ]
+            basePath ++ [ "velocity-logo.png" ]
 
         CircleOutlineIcon icon ->
             let

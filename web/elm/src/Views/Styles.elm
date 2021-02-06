@@ -140,10 +140,10 @@ concourseLogo =
             Just Assets.ConcourseLogoWhite
     , style "background-position" "50% 50%"
     , style "background-repeat" "no-repeat"
-    , style "background-size" "42px 42px"
+    , style "background-size" "36px 30px"
     , style "display" "inline-block"
-    , style "width" "54px"
-    , style "height" "54px"
+    , style "width" "75px"
+    , style "height" "75px"
     ]
 
 

@@ -1154,17 +1154,16 @@ welcomeCard session =
               <|
                 [ Html.div
                     [ style "margin-right" "10px" ]
-                    [ Html.text Text.cliInstructions ]
+                    [ Html.text Text.velocityIntroductions ]
                 ]
-                    ++ List.map (cliIcon session.hovered) Cli.clis
-            , Html.div
-                []
-                [ Html.text Text.setPipelineInstructions ]
+            --, Html.div
+            --    []
+            --    [ Html.text Text.setPipelineInstructions ]
             ]
                 ++ loginInstruction session.userState
-        , Html.pre
-            Styles.asciiArt
-            [ Html.text Text.asciiArt ]
+        --, Html.pre
+        --    Styles.asciiArt
+        --    [ Html.text Text.asciiArt ]
         ]
 
 
