@@ -450,7 +450,7 @@ view model =
         ( title, body ) =
             SubPage.view model.session model.subModel
     in
-    { title = title ++ " - Concourse"
+    { title = title ++ " - Velocity - Supercharge Your Software Delivery"
     , body =
         List.map (Html.map Update)
             [ SubPage.tooltip model.subModel model.session

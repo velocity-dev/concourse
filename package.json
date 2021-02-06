@@ -4,7 +4,10 @@
   "main": "index.js",
   "repository": "https://github.com/concourse/concourse",
   "license": "Apache-2.0",
-  "dependencies": {},
+  "dependencies": {
+    "chokidar-cli": "^2.1.0",
+    "request": "^2.86.0"
+  },
   "devDependencies": {
     "@babel/core": "^7.8.4",
     "@babel/plugin-syntax-dynamic-import": "^7.8.3",
@@ -14,7 +17,7 @@
     "child-process-promise": "^2.2.1",
     "clean-css-cli": "^4.3.0",
     "elm": "^0.19.1",
-    "elm-analyse": "stil4m/elm-analyse#1ced133fa266fca45027e007e573badedb62a225",
+    "elm-analyse": "stil4m/elm-analyse#701b8b4013a4f057b9382d368e42adc6fe08e14e",
     "elm-format": "0.8.2",
     "elm-test": "^0.19.1",
     "less": "^3.10.3",
@@ -39,5 +42,6 @@
     "build-elm-debug": "cd web/elm && elm make --debug --output ../public/elm.js src/Main.elm && uglifyjs < ../public/elm.js > ../public/elm.min.js",
     "update-mdi-svg": "./hack/update-mdi-svg \"node_modules/@mdi/svg/svg\" | tr -d '\n' > web/public/mdi-svg.min.js",
     "benchmark": "echo skipping benchmarks until https://github.com/elm-explorations/benchmark/issues/21 is fixed"
+    "watch-elm": "chokidar -i elm-stuff 'web/elm/src/**/*.elm' 'web/assets/css/*.less' -c 'yarn run build-debug' --initial"
   }
 }

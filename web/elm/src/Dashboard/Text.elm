@@ -1,6 +1,6 @@
 module Dashboard.Text exposing
     ( asciiArt
-    , cliInstructions
+    , velocityIntroductions
     , setPipelineInstructions
     , welcome
     )
@@ -57,12 +57,12 @@ asciiArt =
 
 welcome : String
 welcome =
-    "welcome to concourse!"
+    "Welcome to Velocity!"
 
 
-cliInstructions : String
-cliInstructions =
-    "first, download the CLI tools:"
+velocityIntroductions : String
+velocityIntroductions =
+    "Velocity automates and accelerates modern software delivery allowing your development teams to focus on features. Bring the power of agility and visualizations to your delivery pipelines."
 
 
 setPipelineInstructions : String
