@@ -53,6 +53,7 @@ module Colors exposing
     , tooltipBackground
     , unknown
     , white
+    , grey100
     )
 
 import Concourse.BuildStatus exposing (BuildStatus(..))
@@ -64,6 +65,35 @@ frame =
     "#1e1d1d"
 
 
+topBarBackground : String
+topBarBackground =
+    ColorValues.grey30
+
+
+infoBarBackground : String
+infoBarBackground =
+    ColorValues.grey20
+
+
+hamburgerClosedBackground : String
+hamburgerClosedBackground =
+    ColorValues.grey40
+
+
+border : String
+border =
+    ColorValues.black
+
+
+dropdownItemSelectedBackground : String
+dropdownItemSelectedBackground =
+    ColorValues.grey90
+
+
+
+----
+
+
 sectionHeader : String
 sectionHeader =
     "#1e1d1d"
@@ -71,12 +101,35 @@ sectionHeader =
 
 dashboardText : String
 dashboardText =
-    "#ffffff"
+    ColorValues.grey100
+
+
+dashboardPipelineHeaderText : String
+dashboardPipelineHeaderText =
+    ColorValues.grey20
+
+
+dropdownItemInputText : String
+dropdownItemInputText =
+    ColorValues.grey30
+
+
+dropdownItemSelectedText : String
+dropdownItemSelectedText =
+    ColorValues.grey30
+
+
+
+----
 
 
 bottomBarText : String
 bottomBarText =
-    "#868585"
+    ColorValues.grey100
+
+
+
+----
 
 
 pinned : String
@@ -102,6 +155,14 @@ pinTools =
 white : String
 white =
     "#ffffff"
+
+grey100 : String
+grey100 =
+    ColorValues.grey100
+
+
+
+----
 
 
 background : String
@@ -292,6 +353,15 @@ groupBackground =
 sideBar : String
 sideBar =
     "#333333"
+
+
+sideBarBackground : String
+sideBarBackground =
+    ColorValues.grey20
+
+
+
+----
 
 
 sideBarActive : String

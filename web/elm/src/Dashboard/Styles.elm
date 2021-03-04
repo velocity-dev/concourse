@@ -623,7 +623,7 @@ searchInput screenSize =
                 BigDesktop ->
                     [ style "width" "220px" ]
     in
-    [ style "background-color" "transparent"
+    [ style "background-color" ColorValues.grey20
     , style "background-image" <|
         Assets.backgroundImage <|
             Just Assets.SearchIcon
@@ -632,9 +632,9 @@ searchInput screenSize =
     , style "height" "30px"
     , style "min-height" "30px"
     , style "padding" "0 42px"
-    , style "border" <| "1px solid " ++ Colors.inputOutline
-    , style "color" Colors.dashboardText
-    , style "font-size" "1.15em"
+    , style "border" <| "1px solid " ++ borderColor
+    , style "color" Colors.grey100
+    , style "font-size" "12px"
     , style "font-family" Views.Styles.fontFamilyDefault
     , style "outline" "0"
     ]
