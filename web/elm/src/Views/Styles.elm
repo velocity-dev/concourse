@@ -150,7 +150,7 @@ concourseLogo =
 clusterName : List (Html.Attribute msg)
 clusterName =
     [ style "font-size" "21px"
-    , style "color" Colors.white
+    , style "color" Colors.grey100
     , style "letter-spacing" "0.1em"
     , style "margin-left" "10px"
     ]
@@ -197,7 +197,7 @@ breadcrumbItem clickable =
 
         else
             "default"
-    , style "color" Colors.white
+    , style "color" Colors.grey100
     ]
 
 

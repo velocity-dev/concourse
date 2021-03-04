@@ -70,6 +70,7 @@ module Colors exposing
     , unknown
     , welcomeCardText
     , white
+    , grey100
     )
 
 import ColorValues
@@ -88,17 +89,17 @@ frame =
 
 topBarBackground : String
 topBarBackground =
-    ColorValues.grey100
+    ColorValues.grey30
 
 
 infoBarBackground : String
 infoBarBackground =
-    ColorValues.grey100
+    ColorValues.grey20
 
 
 hamburgerClosedBackground : String
 hamburgerClosedBackground =
-    ColorValues.grey100
+    ColorValues.grey40
 
 
 border : String
@@ -126,7 +127,7 @@ sectionHeader =
 
 dashboardText : String
 dashboardText =
-    ColorValues.white
+    ColorValues.grey100
 
 
 dashboardPipelineHeaderText : String
@@ -150,7 +151,7 @@ dropdownItemSelectedText =
 
 bottomBarText : String
 bottomBarText =
-    ColorValues.grey40
+    ColorValues.grey100
 
 
 
@@ -211,6 +212,14 @@ pinMenuHover =
 white : String
 white =
     ColorValues.white
+
+
+
+----
+
+grey100 : String
+grey100 =
+    ColorValues.grey100
 
 
 
@@ -483,7 +492,7 @@ sideBar =
 
 sideBarBackground : String
 sideBarBackground =
-    ColorValues.grey90
+    ColorValues.grey20
 
 
 

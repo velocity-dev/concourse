@@ -787,7 +787,7 @@ searchInput screenSize hasQuery =
             else
                 Just Assets.SearchIconGrey
     in
-    [ style "background-color" ColorValues.grey90
+    [ style "background-color" ColorValues.grey20
     , style "background-image" <|
         Assets.backgroundImage <|
             bgImage
@@ -797,7 +797,7 @@ searchInput screenSize hasQuery =
     , style "min-height" "30px"
     , style "padding" "0 42px"
     , style "border" <| "1px solid " ++ borderColor
-    , style "color" Colors.white
+    , style "color" Colors.grey100
     , style "font-size" "12px"
     , style "font-family" Views.Styles.fontFamilyDefault
     , style "outline" "0"
